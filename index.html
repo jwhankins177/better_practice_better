@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Practice Betting App</title>
+    <title>Practice Betting App - v1.2</title>
     <style>
         :root {
             --color-white: rgba(255, 255, 255, 1);
@@ -808,10 +808,19 @@
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 const tabName = tab.dataset.tab;
+                console.log('Switching to tab:', tabName);
+                
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
-                document.getElementById(`${tabName}-tab`).classList.add('active');
+                
+                const targetTab = document.getElementById(`${tabName}-tab`);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                    console.log('Tab switched successfully to:', tabName);
+                } else {
+                    console.error('Tab not found:', `${tabName}-tab`);
+                }
                 
                 // Update storage status when settings tab is opened
                 if (tabName === 'settings') {
@@ -1322,7 +1331,10 @@
             saveState();
         }
         
-        // Make settleBet globally accessible
+        // Make functions globally accessible
+        window.exportData = exportData;
+        window.importData = importData;
+        window.resetAllData = resetAllData;
         window.settleBet = settleBet;
         
         // Refresh button
