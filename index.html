@@ -1806,6 +1806,38 @@
             URL.revokeObjectURL(url);
         }
         
+        // Helper function to calculate summary statistics
+        function calculateBetSummary() {
+            const settledBets = state.betHistory.filter(b => b.status !== 'pending');
+            const wins = settledBets.filter(b => b.status === 'won').length;
+            const losses = settledBets.filter(b => b.status === 'lost').length;
+            const pushes = settledBets.filter(b => b.status === 'push').length;
+            const totalStaked = state.betHistory.reduce((sum, bet) => sum + bet.stake, 0);
+            const totalWinnings = state.betHistory
+                .filter(b => b.status === 'won')
+                .reduce((sum, bet) => sum + bet.potentialWin, 0);
+            const totalLosses = state.betHistory
+                .filter(b => b.status === 'lost')
+                .reduce((sum, bet) => sum + bet.stake, 0);
+            const netProfit = totalWinnings - totalLosses;
+            const winRate = settledBets.length > 0 ? 
+                ((wins / settledBets.length) * 100).toFixed(1) : '0.0';
+            
+            return {
+                totalBets: state.betHistory.length,
+                settledBets: settledBets.length,
+                pendingBets: state.betHistory.filter(b => b.status === 'pending').length,
+                wins,
+                losses,
+                pushes,
+                winRate,
+                totalStaked,
+                totalWinnings,
+                totalLosses,
+                netProfit
+            };
+        }
+        
         // Export bet history as CSV
         function exportBetHistoryCSV() {
             if (state.betHistory.length === 0) {
@@ -1864,9 +1896,7 @@
                 
                 const sport = formatSport(bet.sport || state.currentSport);
                 
-                const teams = bet.opponent ? 
-                    `${bet.awayTeam} vs ${bet.homeTeam}` : 
-                    `${bet.awayTeam} vs ${bet.homeTeam}`;
+                const teams = `${bet.awayTeam} vs ${bet.homeTeam}`;
                 
                 const betType = bet.betType || 'Moneyline';
                 const selection = bet.selection || bet.team;
@@ -1905,36 +1935,23 @@
                 ].map(escapeCSV);
             });
             
-            // Calculate summary statistics
-            const settledBets = state.betHistory.filter(b => b.status !== 'pending');
-            const wins = settledBets.filter(b => b.status === 'won').length;
-            const losses = settledBets.filter(b => b.status === 'lost').length;
-            const pushes = settledBets.filter(b => b.status === 'push').length;
-            const totalStaked = state.betHistory.reduce((sum, bet) => sum + bet.stake, 0);
-            const totalWinnings = state.betHistory
-                .filter(b => b.status === 'won')
-                .reduce((sum, bet) => sum + bet.potentialWin, 0);
-            const totalLosses = state.betHistory
-                .filter(b => b.status === 'lost')
-                .reduce((sum, bet) => sum + bet.stake, 0);
-            const netProfit = totalWinnings - totalLosses;
-            const winRate = settledBets.length > 0 ? 
-                ((wins / settledBets.length) * 100).toFixed(1) : '0.0';
+            // Calculate summary statistics using helper function
+            const summary = calculateBetSummary();
             
             // Add summary rows
             const summaryRows = [
                 [''],
                 ['SUMMARY STATISTICS'],
-                ['Total Bets', state.betHistory.length],
-                ['Settled Bets', settledBets.length],
-                ['Wins', wins],
-                ['Losses', losses],
-                ['Pushes', pushes],
-                ['Win Rate', winRate + '%'],
-                ['Total Staked', '$' + totalStaked.toFixed(2)],
-                ['Total Winnings', '$' + totalWinnings.toFixed(2)],
-                ['Total Losses', '$' + totalLosses.toFixed(2)],
-                ['Net Profit/Loss', (netProfit >= 0 ? '+$' : '-$') + Math.abs(netProfit).toFixed(2)],
+                ['Total Bets', summary.totalBets],
+                ['Settled Bets', summary.settledBets],
+                ['Wins', summary.wins],
+                ['Losses', summary.losses],
+                ['Pushes', summary.pushes],
+                ['Win Rate', summary.winRate + '%'],
+                ['Total Staked', '$' + summary.totalStaked.toFixed(2)],
+                ['Total Winnings', '$' + summary.totalWinnings.toFixed(2)],
+                ['Total Losses', '$' + summary.totalLosses.toFixed(2)],
+                ['Net Profit/Loss', (summary.netProfit >= 0 ? '+$' : '-$') + Math.abs(summary.netProfit).toFixed(2)],
                 ['Current Bankroll', '$' + state.bankroll.toFixed(2)]
             ].map(row => row.map(escapeCSV));
             
@@ -1964,37 +1981,24 @@
                 return;
             }
             
-            // Calculate summary statistics
-            const settledBets = state.betHistory.filter(b => b.status !== 'pending');
-            const wins = settledBets.filter(b => b.status === 'won').length;
-            const losses = settledBets.filter(b => b.status === 'lost').length;
-            const pushes = settledBets.filter(b => b.status === 'push').length;
-            const totalStaked = state.betHistory.reduce((sum, bet) => sum + bet.stake, 0);
-            const totalWinnings = state.betHistory
-                .filter(b => b.status === 'won')
-                .reduce((sum, bet) => sum + bet.potentialWin, 0);
-            const totalLosses = state.betHistory
-                .filter(b => b.status === 'lost')
-                .reduce((sum, bet) => sum + bet.stake, 0);
-            const netProfit = totalWinnings - totalLosses;
-            const winRate = settledBets.length > 0 ? 
-                ((wins / settledBets.length) * 100).toFixed(1) : '0.0';
+            // Calculate summary statistics using helper function
+            const summary = calculateBetSummary();
             
             // Create export object with bets and summary
             const exportData = {
                 exportDate: new Date().toISOString(),
                 summary: {
-                    totalBets: state.betHistory.length,
-                    settledBets: settledBets.length,
-                    pendingBets: state.betHistory.filter(b => b.status === 'pending').length,
-                    wins: wins,
-                    losses: losses,
-                    pushes: pushes,
-                    winRate: parseFloat(winRate),
-                    totalStaked: totalStaked,
-                    totalWinnings: totalWinnings,
-                    totalLosses: totalLosses,
-                    netProfit: netProfit,
+                    totalBets: summary.totalBets,
+                    settledBets: summary.settledBets,
+                    pendingBets: summary.pendingBets,
+                    wins: summary.wins,
+                    losses: summary.losses,
+                    pushes: summary.pushes,
+                    winRate: parseFloat(summary.winRate),
+                    totalStaked: summary.totalStaked,
+                    totalWinnings: summary.totalWinnings,
+                    totalLosses: summary.totalLosses,
+                    netProfit: summary.netProfit,
                     currentBankroll: state.bankroll
                 },
                 bets: state.betHistory.map(bet => ({
