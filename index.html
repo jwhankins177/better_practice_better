@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Better Practice Bets - v1.5</title>
+    <title>Better Practice Bets - v1.6</title>
     <style>
         :root {
             --color-white: rgba(255, 255, 255, 1);
@@ -723,7 +723,7 @@
     </div>
     
     <div style="text-align: center; padding: var(--space-24) var(--space-16); color: var(--color-text-secondary); font-size: var(--font-size-sm);">
-        Better Practice Bets v1.5.0
+        Better Practice Bets v1.6.0
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
@@ -1892,6 +1892,133 @@
             saveState();
         }
         
+        // Auto-settle bets based on game scores
+        async function checkAndSettleBets() {
+            if (!state.apiKey) {
+                alert('API key required to check game results');
+                return;
+            }
+            
+            const pendingBets = state.betHistory.filter(b => b.status === 'pending');
+            
+            if (pendingBets.length === 0) {
+                alert('No pending bets to settle');
+                return;
+            }
+            
+            let settledCount = 0;
+            const results = [];
+            
+            // Show loading message
+            const originalText = document.getElementById('check-results-btn') ? 
+                document.getElementById('check-results-btn').textContent : '';
+            if (document.getElementById('check-results-btn')) {
+                document.getElementById('check-results-btn').textContent = 'Checking...';
+                document.getElementById('check-results-btn').disabled = true;
+            }
+            
+            try {
+                // Fetch scores for each pending bet
+                for (const bet of pendingBets) {
+                    // Check if game has already started (is in the past)
+                    const gameTime = new Date(bet.gameTime);
+                    const now = new Date();
+                    
+                    // Only check games that have started (at least 3 hours ago to ensure completion)
+                    if (now - gameTime < 3 * 60 * 60 * 1000) {
+                        continue; // Skip games that haven't finished yet
+                    }
+                    
+                    try {
+                        // Fetch game scores from The Odds API
+                        const apiUrl = `https://api.the-odds-api.com/v4/sports/${state.currentSport}/scores/?apiKey=${state.apiKey}&daysFrom=3`;
+                        const corsProxy = 'https://api.allorigins.win/get?url=';
+                        const url = corsProxy + encodeURIComponent(apiUrl);
+                        
+                        const response = await fetch(url);
+                        if (!response.ok) continue;
+                        
+                        const proxyData = await response.json();
+                        const scoresData = JSON.parse(proxyData.contents);
+                        
+                        // Find the specific game
+                        const game = scoresData.find(g => g.id === bet.gameId);
+                        
+                        if (!game || !game.completed) continue;
+                        
+                        // Get the scores
+                        const homeTeam = game.home_team;
+                        const awayTeam = game.away_team;
+                        const homeScore = game.scores?.find(s => s.name === homeTeam)?.score;
+                        const awayScore = game.scores?.find(s => s.name === awayTeam)?.score;
+                        
+                        if (homeScore === undefined || awayScore === undefined) continue;
+                        
+                        // Determine bet outcome based on bet type
+                        let won = false;
+                        
+                        if (bet.betType === 'Moneyline') {
+                            // Simple win/loss
+                            const winner = homeScore > awayScore ? homeTeam : awayTeam;
+                            won = winner === bet.team;
+                            
+                        } else if (bet.betType === 'Spread') {
+                            // Check if team covered the spread
+                            const spread = parseFloat(bet.selection.match(/([+-]?\d+\.?\d*)/)[0]);
+                            
+                            if (bet.team === homeTeam) {
+                                const adjustedScore = homeScore + spread;
+                                won = adjustedScore > awayScore;
+                            } else {
+                                const adjustedScore = awayScore + spread;
+                                won = adjustedScore > homeScore;
+                            }
+                            
+                        } else if (bet.betType === 'Total') {
+                            // Check over/under
+                            const total = homeScore + awayScore;
+                            const line = parseFloat(bet.selection.match(/\d+\.?\d*/)[0]);
+                            const isOver = bet.selection.toLowerCase().includes('over');
+                            
+                            won = isOver ? total > line : total < line;
+                        }
+                        
+                        // Settle the bet
+                        bet.status = won ? 'won' : 'lost';
+                        
+                        if (won) {
+                            state.bankroll += bet.stake + bet.potentialWin;
+                        }
+                        
+                        settledCount++;
+                        results.push(`${bet.team} ${bet.betType}: ${won ? 'WON' : 'LOST'}`);
+                        
+                    } catch (err) {
+                        console.error('Error checking bet:', bet.id, err);
+                    }
+                }
+                
+                if (settledCount > 0) {
+                    updateBankrollDisplay();
+                    renderBetHistory();
+                    saveState();
+                    alert(`✅ Settled ${settledCount} bet(s):\n\n${results.join('\n')}`);
+                } else {
+                    alert('No completed games found for pending bets. Games must be finished for at least 3 hours.');
+                }
+                
+            } catch (error) {
+                console.error('Error in auto-settlement:', error);
+                alert('Error checking results. Please try again.');
+            } finally {
+                // Reset button
+                if (document.getElementById('check-results-btn')) {
+                    document.getElementById('check-results-btn').textContent = originalText;
+                    document.getElementById('check-results-btn').disabled = false;
+                }
+            }
+        }
+        
         // Settle bet function
         function settleBet(betId, result) {
             const bet = state.betHistory.find(b => b.id == betId);
@@ -1917,9 +2044,13 @@
         window.resetAllData = resetAllData;
         window.settleBet = settleBet;
         window.deleteBet = deleteBet;
+        window.checkAndSettleBets = checkAndSettleBets;
         
         // Refresh button
         document.getElementById('refresh-btn').addEventListener('click', fetchGames);
+        
+        // Check Results button
+        document.getElementById('check-results-btn').addEventListener('click', checkAndSettleBets);
         
         // Debug button
         document.getElementById('debug-btn').addEventListener('click', () => {

@@ -27,7 +27,16 @@ A practice betting application with live sports odds, cloud synchronization, and
 
 ## Production Changelog
 
-### v1.5.0 - Latest Release (October 25, 2025)
+### v1.6.0 - Latest Release (October 25, 2025)
+**New Features:**
+- 🤖 **Automatic Bet Settlement** - Check game results and auto-settle pending bets
+  - "Check Results" button in History tab
+  - Fetches final scores from The Odds API
+  - Automatically settles moneyline, spread, and totals bets
+  - Updates bankroll based on results
+  - Shows detailed settlement summary
+
+### v1.5.0 (October 25, 2025)
 **Improvements:**
 - ⚡ Instant bet placement - removed confirmation modal for faster workflow
 - 🗑️ Delete pending bets - refunds stake and removes bet from history
