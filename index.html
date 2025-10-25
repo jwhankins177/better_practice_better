@@ -1826,7 +1826,7 @@
             return {
                 totalBets: state.betHistory.length,
                 settledBets: settledBets.length,
-                pendingBets: state.betHistory.filter(b => b.status === 'pending').length,
+                pendingBets: state.betHistory.length - settledBets.length,
                 wins,
                 losses,
                 pushes,
