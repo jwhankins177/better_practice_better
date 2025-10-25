@@ -469,6 +469,11 @@
             color: var(--color-error);
         }
         
+        .bet-status.push {
+            background: rgba(var(--color-slate-500-rgb), 0.15);
+            color: var(--color-text);
+        }
+        
         .settle-buttons {
             display: flex;
             gap: var(--space-8);
@@ -1896,7 +1901,8 @@
             bet.status = result;
             
             if (result === 'won') {
-                // Add winnings to bankroll (stake + potential win)
+                // Add winnings to bankroll (stake + potentialWin)
+                // Stake was deducted when bet was placed, so we return it plus winnings
                 state.bankroll += bet.stake + bet.potentialWin;
             }
             // If lost, stake was already deducted when bet was placed
@@ -1960,7 +1966,7 @@
             const corsProxy = 'https://api.allorigins.win/get?url=';
             const url = corsProxy + encodeURIComponent(apiUrl);
             
-            const response = await fetch(url, { timeout: 10000 });
+            const response = await fetch(url);
             
             if (!response.ok) {
                 throw new Error(`API Error: ${response.status}`);
@@ -2006,12 +2012,22 @@
                     (awayScore - homeScore) : 
                     (homeScore - awayScore);
                 
+                // Handle push (exactly hit the spread)
+                if (margin + bet.point === 0) {
+                    return 'push'; // Tie - refund stake
+                }
+                
                 // Bet wins if team's score + spread > opponent's score
                 const covered = margin + bet.point > 0;
                 return covered ? 'won' : 'lost';
             } else if (bet.betType === 'Total Points') {
                 // Check if total was over/under
                 const totalScore = awayScore + homeScore;
+                
+                // Handle push (exactly hit the total)
+                if (totalScore === bet.point) {
+                    return 'push'; // Tie - refund stake
+                }
                 
                 if (bet.team === 'Over') {
                     return totalScore > bet.point ? 'won' : 'lost';
@@ -2069,8 +2085,14 @@
                                     bet.status = result;
                                     
                                     if (result === 'won') {
+                                        // Add winnings to bankroll (stake + potentialWin)
+                                        // Stake was deducted when bet was placed, so we return it plus winnings
                                         state.bankroll += bet.stake + bet.potentialWin;
+                                    } else if (result === 'push') {
+                                        // Return stake on push
+                                        state.bankroll += bet.stake;
                                     }
+                                    // If lost, stake was already deducted when bet was placed
                                     
                                     settledCount++;
                                     results.push({
@@ -2093,9 +2115,15 @@
                     // Show notification
                     const wonCount = results.filter(r => r.result === 'won').length;
                     const lostCount = results.filter(r => r.result === 'lost').length;
+                    const pushCount = results.filter(r => r.result === 'push').length;
+                    
+                    let message = `Settled ${settledCount} bet(s): ${wonCount} won, ${lostCount} lost`;
+                    if (pushCount > 0) {
+                        message += `, ${pushCount} push`;
+                    }
                     
                     showNotification(
-                        `Settled ${settledCount} bet(s): ${wonCount} won, ${lostCount} lost`,
+                        message,
                         wonCount > lostCount ? 'success' : 'info'
                     );
                 } else {
