@@ -27,7 +27,14 @@ A practice betting application with live sports odds, cloud synchronization, and
 
 ## Production Changelog
 
-### v1.4.0 - Latest Release (October 25, 2025)
+### v1.5.0 - Latest Release (October 25, 2025)
+**Improvements:**
+- ⚡ Instant bet placement - removed confirmation modal for faster workflow
+- 🗑️ Delete pending bets - refunds stake and removes bet from history
+- 🎯 Spreads set as default betting market
+- 🔧 Debug info moved to Settings tab for cleaner interface
+
+### v1.4.0 (October 25, 2025)
 **New Features:**
 - ✨ Quick bet amount buttons ($25, $50, $100, $250) and percentage presets (1%, 2%, 5%)
 - 🔥 Betting streak tracker showing current streak and best/worst streaks
