@@ -624,6 +624,10 @@
         
         <div id="history-tab" class="tab-content">
             <button class="refresh-btn" id="check-results-btn" style="width: 100%; margin-bottom: var(--space-16);">🎯 Check Results & Settle Bets</button>
+            <div style="display: flex; gap: var(--space-8); margin-bottom: var(--space-16);">
+                <button class="refresh-btn" id="export-csv-btn" style="flex: 1;">📊 Export CSV</button>
+                <button class="refresh-btn" id="export-json-btn" style="flex: 1;">📋 Export JSON</button>
+            </div>
             <div id="history-container"></div>
         </div>
         
@@ -1802,6 +1806,230 @@
             URL.revokeObjectURL(url);
         }
         
+        // Export bet history as CSV
+        function exportBetHistoryCSV() {
+            if (state.betHistory.length === 0) {
+                alert('No bet history to export');
+                return;
+            }
+            
+            // Helper function to escape CSV values
+            function escapeCSV(value) {
+                if (value === null || value === undefined) return '';
+                const str = String(value);
+                // If value contains comma, quote, or newline, wrap in quotes and escape quotes
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            }
+            
+            // Helper function to format sport name
+            function formatSport(sportKey) {
+                const sportMap = {
+                    'americanfootball_nfl': 'NFL',
+                    'basketball_nba': 'NBA',
+                    'icehockey_nhl': 'NHL',
+                    'baseball_mlb': 'MLB',
+                    'soccer_epl': 'EPL',
+                    'basketball_ncaab': 'NCAAB',
+                    'americanfootball_ncaaf': 'NCAAF'
+                };
+                return sportMap[sportKey] || sportKey;
+            }
+            
+            // CSV Header
+            const headers = [
+                'Date',
+                'Sport',
+                'Teams',
+                'Bet Type',
+                'Selection',
+                'Odds',
+                'Stake',
+                'Status',
+                'Result',
+                'Profit/Loss'
+            ];
+            
+            // Convert bets to CSV rows
+            const rows = state.betHistory.map(bet => {
+                const date = new Date(bet.placedAt).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const sport = formatSport(bet.sport || state.currentSport);
+                
+                const teams = bet.opponent ? 
+                    `${bet.awayTeam} vs ${bet.homeTeam}` : 
+                    `${bet.awayTeam} vs ${bet.homeTeam}`;
+                
+                const betType = bet.betType || 'Moneyline';
+                const selection = bet.selection || bet.team;
+                const odds = formatOdds(bet.odds);
+                const stake = bet.stake.toFixed(2);
+                const status = bet.status.toUpperCase();
+                
+                let result = '';
+                let profitLoss = '';
+                
+                if (bet.status === 'won') {
+                    result = 'WIN';
+                    profitLoss = '+' + bet.potentialWin.toFixed(2);
+                } else if (bet.status === 'lost') {
+                    result = 'LOSS';
+                    profitLoss = '-' + bet.stake.toFixed(2);
+                } else if (bet.status === 'push') {
+                    result = 'PUSH';
+                    profitLoss = '0.00';
+                } else {
+                    result = 'PENDING';
+                    profitLoss = 'TBD';
+                }
+                
+                return [
+                    date,
+                    sport,
+                    teams,
+                    betType,
+                    selection,
+                    odds,
+                    stake,
+                    status,
+                    result,
+                    profitLoss
+                ].map(escapeCSV);
+            });
+            
+            // Calculate summary statistics
+            const settledBets = state.betHistory.filter(b => b.status !== 'pending');
+            const wins = settledBets.filter(b => b.status === 'won').length;
+            const losses = settledBets.filter(b => b.status === 'lost').length;
+            const pushes = settledBets.filter(b => b.status === 'push').length;
+            const totalStaked = state.betHistory.reduce((sum, bet) => sum + bet.stake, 0);
+            const totalWinnings = state.betHistory
+                .filter(b => b.status === 'won')
+                .reduce((sum, bet) => sum + bet.potentialWin, 0);
+            const totalLosses = state.betHistory
+                .filter(b => b.status === 'lost')
+                .reduce((sum, bet) => sum + bet.stake, 0);
+            const netProfit = totalWinnings - totalLosses;
+            const winRate = settledBets.length > 0 ? 
+                ((wins / settledBets.length) * 100).toFixed(1) : '0.0';
+            
+            // Add summary rows
+            const summaryRows = [
+                [''],
+                ['SUMMARY STATISTICS'],
+                ['Total Bets', state.betHistory.length],
+                ['Settled Bets', settledBets.length],
+                ['Wins', wins],
+                ['Losses', losses],
+                ['Pushes', pushes],
+                ['Win Rate', winRate + '%'],
+                ['Total Staked', '$' + totalStaked.toFixed(2)],
+                ['Total Winnings', '$' + totalWinnings.toFixed(2)],
+                ['Total Losses', '$' + totalLosses.toFixed(2)],
+                ['Net Profit/Loss', (netProfit >= 0 ? '+$' : '-$') + Math.abs(netProfit).toFixed(2)],
+                ['Current Bankroll', '$' + state.bankroll.toFixed(2)]
+            ].map(row => row.map(escapeCSV));
+            
+            // Combine all rows
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.join(',')),
+                ...summaryRows.map(row => row.join(','))
+            ].join('\n');
+            
+            // Create and download file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `bet-history-${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification('Bet history exported as CSV', 'success');
+        }
+        
+        // Export bet history as JSON
+        function exportBetHistoryJSON() {
+            if (state.betHistory.length === 0) {
+                alert('No bet history to export');
+                return;
+            }
+            
+            // Calculate summary statistics
+            const settledBets = state.betHistory.filter(b => b.status !== 'pending');
+            const wins = settledBets.filter(b => b.status === 'won').length;
+            const losses = settledBets.filter(b => b.status === 'lost').length;
+            const pushes = settledBets.filter(b => b.status === 'push').length;
+            const totalStaked = state.betHistory.reduce((sum, bet) => sum + bet.stake, 0);
+            const totalWinnings = state.betHistory
+                .filter(b => b.status === 'won')
+                .reduce((sum, bet) => sum + bet.potentialWin, 0);
+            const totalLosses = state.betHistory
+                .filter(b => b.status === 'lost')
+                .reduce((sum, bet) => sum + bet.stake, 0);
+            const netProfit = totalWinnings - totalLosses;
+            const winRate = settledBets.length > 0 ? 
+                ((wins / settledBets.length) * 100).toFixed(1) : '0.0';
+            
+            // Create export object with bets and summary
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                summary: {
+                    totalBets: state.betHistory.length,
+                    settledBets: settledBets.length,
+                    pendingBets: state.betHistory.filter(b => b.status === 'pending').length,
+                    wins: wins,
+                    losses: losses,
+                    pushes: pushes,
+                    winRate: parseFloat(winRate),
+                    totalStaked: totalStaked,
+                    totalWinnings: totalWinnings,
+                    totalLosses: totalLosses,
+                    netProfit: netProfit,
+                    currentBankroll: state.bankroll
+                },
+                bets: state.betHistory.map(bet => ({
+                    id: bet.id,
+                    date: bet.placedAt,
+                    gameTime: bet.gameTime,
+                    sport: bet.sport || state.currentSport,
+                    awayTeam: bet.awayTeam,
+                    homeTeam: bet.homeTeam,
+                    betType: bet.betType || 'Moneyline',
+                    selection: bet.selection || bet.team,
+                    team: bet.team,
+                    opponent: bet.opponent,
+                    odds: bet.odds,
+                    point: bet.point,
+                    stake: bet.stake,
+                    potentialWin: bet.potentialWin,
+                    status: bet.status,
+                    profitLoss: bet.status === 'won' ? bet.potentialWin : 
+                               bet.status === 'lost' ? -bet.stake : 0
+                }))
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `bet-history-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification('Bet history exported as JSON', 'success');
+        }
+        
         // Import data function
         function importData() {
             const input = document.createElement('input');
@@ -2069,12 +2297,18 @@
         window.settleBet = settleBet;
         window.deleteBet = deleteBet;
         window.checkAndSettleBets = checkAndSettleBets;
+        window.exportBetHistoryCSV = exportBetHistoryCSV;
+        window.exportBetHistoryJSON = exportBetHistoryJSON;
         
         // Refresh button
         document.getElementById('refresh-btn').addEventListener('click', fetchGames);
         
         // Check Results button
         document.getElementById('check-results-btn').addEventListener('click', checkAndSettleBets);
+        
+        // Export buttons
+        document.getElementById('export-csv-btn').addEventListener('click', exportBetHistoryCSV);
+        document.getElementById('export-json-btn').addEventListener('click', exportBetHistoryJSON);
         
         // Debug button
         document.getElementById('debug-btn').addEventListener('click', () => {
