@@ -541,19 +541,6 @@
             </div>
         </div>
         
-        <div class="api-info">
-            ⚠️ This app requires a valid API key from The Odds API to display live betting lines. Get a free API key at <a href="https://the-odds-api.com" target="_blank" rel="noopener noreferrer">the-odds-api.com</a> (500 free requests/month). No demo data available.
-        </div>
-        
-        <div class="form-group" style="margin-bottom: var(--space-20);">
-            <label for="api-key-input" style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); margin-bottom: var(--space-8);">API Key (Optional)</label>
-            <div style="display: flex; gap: var(--space-8);">
-                <input type="text" id="api-key-input" placeholder="Enter your API key for live odds" style="flex: 1; padding: var(--space-12); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-base); color: var(--color-text); font-size: var(--font-size-base);">
-                <button id="save-api-key-btn" class="sport-btn" style="white-space: nowrap;">Save Key</button>
-            </div>
-            <div id="api-key-status" style="font-size: var(--font-size-sm); margin-top: var(--space-8); color: var(--color-text-secondary);"></div>
-        </div>
-        
         <div class="tabs">
             <button class="tab active" data-tab="games">Games</button>
             <button class="tab" data-tab="history">Bet History</button>
@@ -562,6 +549,22 @@
         
         <div id="games-tab" class="tab-content active">
             <div class="sport-selector" id="sport-selector"></div>
+            
+            <!-- Betting Market Toggle -->
+            <div style="display: flex; justify-content: center; margin-bottom: var(--space-16);">
+                <div style="display: flex; background: var(--color-secondary); border-radius: var(--radius-base); padding: 4px;">
+                    <button class="market-toggle active" data-market="h2h" style="padding: var(--space-8) var(--space-16); background: var(--color-primary); color: var(--color-btn-primary-text); border: none; border-radius: var(--radius-base); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); cursor: pointer; transition: all 0.2s;">
+                        Moneyline
+                    </button>
+                    <button class="market-toggle" data-market="spreads" style="padding: var(--space-8) var(--space-16); background: transparent; color: var(--color-text); border: none; border-radius: var(--radius-base); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); cursor: pointer; transition: all 0.2s;">
+                        Spreads
+                    </button>
+                    <button class="market-toggle" data-market="totals" style="padding: var(--space-8) var(--space-16); background: transparent; color: var(--color-text); border: none; border-radius: var(--radius-base); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); cursor: pointer; transition: all 0.2s;">
+                        Totals
+                    </button>
+                </div>
+            </div>
+            
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-16);">
                 <div style="display: flex; gap: var(--space-8);">
                     <button class="refresh-btn" id="refresh-btn">🔄 Refresh Odds</button>
@@ -579,6 +582,22 @@
         </div>
         
         <div id="settings-tab" class="tab-content">
+            <div class="api-info" style="background: rgba(var(--color-error-rgb), 0.1); padding: var(--space-12); border-radius: var(--radius-base); font-size: var(--font-size-sm); color: var(--color-error); margin-bottom: var(--space-16);">
+                ⚠️ This app requires a valid API key from The Odds API to display live betting lines. Get a free API key at <a href="https://the-odds-api.com" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary);">the-odds-api.com</a> (500 free requests/month). No demo data available.
+            </div>
+            
+            <div style="background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--radius-lg); padding: var(--space-16); margin-bottom: var(--space-16);">
+                <h3 style="margin-bottom: var(--space-12); color: var(--color-text);">API Configuration</h3>
+                <div class="form-group" style="margin-bottom: var(--space-16);">
+                    <label for="api-key-input" style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); margin-bottom: var(--space-8);">The Odds API Key</label>
+                    <div style="display: flex; gap: var(--space-8);">
+                        <input type="text" id="api-key-input" placeholder="Enter your API key for live odds" style="flex: 1; padding: var(--space-12); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-base); color: var(--color-text); font-size: var(--font-size-base);">
+                        <button id="save-api-key-btn" class="sport-btn" style="white-space: nowrap;">Save Key</button>
+                    </div>
+                    <div id="api-key-status" style="font-size: var(--font-size-sm); margin-top: var(--space-8); color: var(--color-text-secondary);"></div>
+                </div>
+            </div>
+            
             <div style="background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--radius-lg); padding: var(--space-16); margin-bottom: var(--space-16);">
                 <h3 style="margin-bottom: var(--space-12); color: var(--color-text);">Data Storage</h3>
                 <div id="storage-status" style="margin-bottom: var(--space-16); padding: var(--space-12); background: var(--color-secondary); border-radius: var(--radius-base); font-size: var(--font-size-sm);">
@@ -677,6 +696,7 @@
             betHistory: [],
             games: [],
             currentSport: 'americanfootball_nfl',
+            currentMarket: 'h2h', // h2h, spreads, totals
             apiKey: '' // Users can add their own API key
         };
         
@@ -796,6 +816,7 @@
         // Initialize
         loadState();
         renderSportSelector();
+        renderMarketToggle();
         fetchGames();
         
         // API key button handler
@@ -846,6 +867,30 @@
             });
         }
         
+        // Render market toggle
+        function renderMarketToggle() {
+            const toggles = document.querySelectorAll('.market-toggle');
+            toggles.forEach(toggle => {
+                toggle.classList.remove('active');
+                if (toggle.dataset.market === state.currentMarket) {
+                    toggle.classList.add('active');
+                    toggle.style.background = 'var(--color-primary)';
+                    toggle.style.color = 'var(--color-btn-primary-text)';
+                } else {
+                    toggle.style.background = 'transparent';
+                    toggle.style.color = 'var(--color-text)';
+                }
+            });
+            
+            toggles.forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    state.currentMarket = toggle.dataset.market;
+                    renderMarketToggle();
+                    renderGames(); // Re-render with new market
+                });
+            });
+        }
+        
 
         // Fetch games from API or use demo data
         async function fetchGames() {
@@ -854,10 +899,11 @@
             
             try {
                 if (state.apiKey) {
-                    console.log('Fetching games for sport:', state.currentSport);
+                    console.log('Fetching games for sport:', state.currentSport, 'market:', state.currentMarket);
                     
-                    // Use a CORS proxy for mobile/file access
-                    const apiUrl = `https://api.the-odds-api.com/v4/sports/${state.currentSport}/odds/?apiKey=${state.apiKey}&regions=us&markets=h2h&oddsFormat=american`;
+                    // Use a CORS proxy for mobile/file access and get multiple markets
+                    const markets = 'h2h,spreads,totals'; // Get all markets at once
+                    const apiUrl = `https://api.the-odds-api.com/v4/sports/${state.currentSport}/odds/?apiKey=${state.apiKey}&regions=us&markets=${markets}&oddsFormat=american`;
                     const corsProxy = 'https://api.allorigins.win/get?url=';
                     const url = corsProxy + encodeURIComponent(apiUrl);
                     
@@ -938,44 +984,130 @@
                     minute: '2-digit'
                 });
                 
-                const h2hMarket = game.bookmakers?.[0]?.markets?.find(m => m.key === 'h2h');
-                const outcomes = h2hMarket?.outcomes || [];
-                const awayOdds = outcomes.find(o => o.name === game.away_team)?.price || 'N/A';
-                const homeOdds = outcomes.find(o => o.name === game.home_team)?.price || 'N/A';
+                // Find the current market
+                const currentMarket = game.bookmakers?.[0]?.markets?.find(m => m.key === state.currentMarket);
+                const outcomes = currentMarket?.outcomes || [];
                 
-                return `
+                let gameHTML = `
                     <div class="game-card">
                         <div class="game-time">${gameTime}</div>
-                        <div class="teams">
-                            <div class="team-row">
-                                <span class="team-name">${game.away_team}</span>
-                                <div class="odds-container">
-                                    <button class="odds-btn" 
-                                            data-game-id="${game.id}"
-                                            data-team="${game.away_team}"
-                                            data-odds="${awayOdds}"
-                                            data-opponent="${game.home_team}"
-                                            data-time="${game.commence_time}">
-                                        ${formatOdds(awayOdds)}
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="team-row">
-                                <span class="team-name">${game.home_team}</span>
-                                <div class="odds-container">
-                                    <button class="odds-btn"
-                                            data-game-id="${game.id}"
-                                            data-team="${game.home_team}"
-                                            data-odds="${homeOdds}"
-                                            data-opponent="${game.away_team}"
-                                            data-time="${game.commence_time}">
-                                        ${formatOdds(homeOdds)}
-                                    </button>
-                                </div>
+                        <div class="teams">`;
+                
+                if (state.currentMarket === 'h2h') {
+                    // Moneyline betting
+                    const awayOdds = outcomes.find(o => o.name === game.away_team)?.price || 'N/A';
+                    const homeOdds = outcomes.find(o => o.name === game.home_team)?.price || 'N/A';
+                    
+                    gameHTML += `
+                        <div class="team-row">
+                            <span class="team-name">${game.away_team}</span>
+                            <div class="odds-container">
+                                <button class="odds-btn" 
+                                        data-game-id="${game.id}"
+                                        data-team="${game.away_team}"
+                                        data-odds="${awayOdds}"
+                                        data-opponent="${game.home_team}"
+                                        data-time="${game.commence_time}"
+                                        data-bet-type="Moneyline"
+                                        data-selection="${game.away_team} ML">
+                                    ${formatOdds(awayOdds)}
+                                </button>
                             </div>
                         </div>
-                    </div>
-                `;
+                        <div class="team-row">
+                            <span class="team-name">${game.home_team}</span>
+                            <div class="odds-container">
+                                <button class="odds-btn"
+                                        data-game-id="${game.id}"
+                                        data-team="${game.home_team}"
+                                        data-odds="${homeOdds}"
+                                        data-opponent="${game.away_team}"
+                                        data-time="${game.commence_time}"
+                                        data-bet-type="Moneyline"
+                                        data-selection="${game.home_team} ML">
+                                    ${formatOdds(homeOdds)}
+                                </button>
+                            </div>
+                        </div>`;
+                } else if (state.currentMarket === 'spreads') {
+                    // Point spread betting
+                    const awaySpread = outcomes.find(o => o.name === game.away_team);
+                    const homeSpread = outcomes.find(o => o.name === game.home_team);
+                    
+                    gameHTML += `
+                        <div class="team-row">
+                            <span class="team-name">${game.away_team}</span>
+                            <div class="odds-container">
+                                <button class="odds-btn" 
+                                        data-game-id="${game.id}"
+                                        data-team="${game.away_team}"
+                                        data-odds="${awaySpread?.price || 'N/A'}"
+                                        data-opponent="${game.home_team}"
+                                        data-time="${game.commence_time}"
+                                        data-bet-type="Point Spread"
+                                        data-selection="${game.away_team} ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point || 'N/A'}">
+                                    ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point || 'N/A'} ${formatOdds(awaySpread?.price || 'N/A')}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="team-row">
+                            <span class="team-name">${game.home_team}</span>
+                            <div class="odds-container">
+                                <button class="odds-btn"
+                                        data-game-id="${game.id}"
+                                        data-team="${game.home_team}"
+                                        data-odds="${homeSpread?.price || 'N/A'}"
+                                        data-opponent="${game.away_team}"
+                                        data-time="${game.commence_time}"
+                                        data-bet-type="Point Spread"
+                                        data-selection="${game.home_team} ${homeSpread?.point > 0 ? '+' : ''}${homeSpread?.point || 'N/A'}">
+                                    ${homeSpread?.point > 0 ? '+' : ''}${homeSpread?.point || 'N/A'} ${formatOdds(homeSpread?.price || 'N/A')}
+                                </button>
+                            </div>
+                        </div>`;
+                } else if (state.currentMarket === 'totals') {
+                    // Over/Under betting
+                    const overOutcome = outcomes.find(o => o.name === 'Over');
+                    const underOutcome = outcomes.find(o => o.name === 'Under');
+                    
+                    gameHTML += `
+                        <div class="team-row">
+                            <span class="team-name">Over ${overOutcome?.point || 'N/A'}</span>
+                            <div class="odds-container">
+                                <button class="odds-btn" 
+                                        data-game-id="${game.id}"
+                                        data-team="Over"
+                                        data-odds="${overOutcome?.price || 'N/A'}"
+                                        data-opponent=""
+                                        data-time="${game.commence_time}"
+                                        data-bet-type="Total Points"
+                                        data-selection="Over ${overOutcome?.point || 'N/A'}">
+                                    ${formatOdds(overOutcome?.price || 'N/A')}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="team-row">
+                            <span class="team-name">Under ${underOutcome?.point || 'N/A'}</span>
+                            <div class="odds-container">
+                                <button class="odds-btn"
+                                        data-game-id="${game.id}"
+                                        data-team="Under"
+                                        data-odds="${underOutcome?.price || 'N/A'}"
+                                        data-opponent=""
+                                        data-time="${game.commence_time}"
+                                        data-bet-type="Total Points"
+                                        data-selection="Under ${underOutcome?.point || 'N/A'}">
+                                    ${formatOdds(underOutcome?.price || 'N/A')}
+                                </button>
+                            </div>
+                        </div>`;
+                }
+                
+                gameHTML += `
+                        </div>
+                    </div>`;
+                
+                return gameHTML;
             }).join('');
             
             // Add click handlers to odds buttons
@@ -998,13 +1130,17 @@
             const odds = parseFloat(btn.dataset.odds);
             const opponent = btn.dataset.opponent;
             const time = btn.dataset.time;
+            const betType = btn.dataset.betType;
+            const selection = btn.dataset.selection;
             
             state.currentBet = {
                 gameId,
                 team,
                 opponent,
                 odds,
-                time
+                time,
+                betType,
+                selection
             };
             
             document.querySelectorAll('.odds-btn').forEach(b => b.classList.remove('selected'));
@@ -1019,9 +1155,14 @@
             const betDetails = document.getElementById('bet-details');
             const stakeInput = document.getElementById('stake-input');
             
+            const matchup = state.currentBet.opponent ? 
+                `${state.currentBet.team} vs ${state.currentBet.opponent}` : 
+                `${state.currentBet.team}`;
+            
             betDetails.innerHTML = `
-                <div class="bet-info">${state.currentBet.team} vs ${state.currentBet.opponent}</div>
-                <div class="bet-selection">${state.currentBet.team} ${formatOdds(state.currentBet.odds)}</div>
+                <div class="bet-info">${matchup}</div>
+                <div class="bet-info">${state.currentBet.betType}</div>
+                <div class="bet-selection">${state.currentBet.selection} ${formatOdds(state.currentBet.odds)}</div>
             `;
             
             betSlip.classList.add('active');
@@ -1123,6 +1264,8 @@
                 team: state.currentBet.team,
                 opponent: state.currentBet.opponent,
                 odds: state.currentBet.odds,
+                betType: state.currentBet.betType,
+                selection: state.currentBet.selection,
                 stake,
                 potentialWin,
                 status: 'pending',
@@ -1289,12 +1432,16 @@
                     minute: '2-digit'
                 });
                 
+                const matchup = bet.opponent ? 
+                    `${bet.team} vs ${bet.opponent}` : 
+                    `${bet.team}`;
+                
                 return `
                     <div class="bet-history-item">
                         <div class="bet-header">
                             <div>
-                                <div class="bet-matchup">${bet.team} vs ${bet.opponent}</div>
-                                <div class="bet-pick">Pick: ${bet.team} ${formatOdds(bet.odds)} • ${gameTime}</div>
+                                <div class="bet-matchup">${matchup}</div>
+                                <div class="bet-pick">${bet.betType || 'Moneyline'}: ${bet.selection || bet.team} ${formatOdds(bet.odds)} • ${gameTime}</div>
                             </div>
                             <span class="bet-status ${bet.status}">${bet.status.toUpperCase()}</span>
                         </div>
