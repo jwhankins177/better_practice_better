@@ -572,6 +572,18 @@
                 <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: 4px;">Profit/Loss</div>
                 <div id="profit-loss" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold);">$0</div>
             </div>
+            <div class="stat-item" style="text-align: center;">
+                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: 4px;">Current Streak</div>
+                <div id="current-streak" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold);">-</div>
+            </div>
+            <div class="stat-item" style="text-align: center;">
+                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: 4px;">Best Streak</div>
+                <div id="best-streak" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-success);">0W</div>
+            </div>
+            <div class="stat-item" style="text-align: center;">
+                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: 4px;">Worst Streak</div>
+                <div id="worst-streak" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-error);">0L</div>
+            </div>
         </div>
         
         <div class="tabs">
@@ -1443,6 +1455,61 @@
             const profitLossEl = document.getElementById('profit-loss');
             profitLossEl.textContent = `${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)}`;
             profitLossEl.style.color = profitLoss >= 0 ? 'var(--color-success)' : 'var(--color-error)';
+            
+            // Calculate streaks
+            let currentStreak = 0;
+            let bestWinStreak = 0;
+            let worstLossStreak = 0;
+            let tempStreak = 0;
+            let lastResult = null;
+            
+            // Sort bets by placed time to get chronological order
+            const chronologicalBets = [...settledBets].sort((a, b) => 
+                new Date(a.placedAt) - new Date(b.placedAt)
+            );
+            
+            for (const bet of chronologicalBets) {
+                if (bet.status === 'won') {
+                    if (lastResult === 'won') {
+                        tempStreak++;
+                    } else {
+                        tempStreak = 1;
+                    }
+                    lastResult = 'won';
+                    bestWinStreak = Math.max(bestWinStreak, tempStreak);
+                } else if (bet.status === 'lost') {
+                    if (lastResult === 'lost') {
+                        tempStreak++;
+                    } else {
+                        tempStreak = 1;
+                    }
+                    lastResult = 'lost';
+                    worstLossStreak = Math.max(worstLossStreak, tempStreak);
+                }
+            }
+            
+            // Current streak is the last tempStreak value
+            currentStreak = lastResult ? tempStreak : 0;
+            const currentStreakText = lastResult ? 
+                `${currentStreak}${lastResult === 'won' ? 'W' : 'L'}` : '-';
+            const currentStreakColor = lastResult === 'won' ? 
+                'var(--color-success)' : 'var(--color-error)';
+            
+            const currentStreakEl = document.getElementById('current-streak');
+            if (currentStreakEl) {
+                currentStreakEl.textContent = currentStreakText;
+                currentStreakEl.style.color = lastResult ? currentStreakColor : 'var(--color-text)';
+            }
+            
+            const bestStreakEl = document.getElementById('best-streak');
+            if (bestStreakEl) {
+                bestStreakEl.textContent = `${bestWinStreak}W`;
+            }
+            
+            const worstStreakEl = document.getElementById('worst-streak');
+            if (worstStreakEl) {
+                worstStreakEl.textContent = `${worstLossStreak}L`;
+            }
             
             // Update settings tab stats
             const totalBetsEl = document.getElementById('total-bets');
