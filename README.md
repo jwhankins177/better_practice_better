@@ -82,12 +82,25 @@ A practice betting application with live sports odds, cloud synchronization, and
 - **Charts:** Chart.js v4.4.0
 - **Hosting:** GitHub Pages
 
+## Contributing
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+- Development workflow
+- Branch strategy
+- Code style
+- Pull request process
+
+**Quick Links:**
+- 📋 [Development Guide](DEV_GUIDE.md) - Quick reference for daily workflow
+- 🗺️ [Roadmap](ROADMAP.md) - Feature roadmap and priorities
+- 🐛 [Report a Bug](https://github.com/jwhankins177/better_practice_better/issues/new?template=bug_report.md)
+- 💡 [Request a Feature](https://github.com/jwhankins177/better_practice_better/issues/new?template=feature_request.md)
+
 ## Development
-See the `development` branch for upcoming features and detailed development changelog.
+Active development happens on feature branches that are merged into `main` via pull requests.
 
 ### Branch Structure
-- `main` - Production releases (stable)
-- `development` - Active feature development
+- `main` - Production releases (stable, always deployable)
+- `feature/*` - Feature branches (created as needed, deleted after merge)
 
 ## Support
 For issues or feature requests, please create an issue on GitHub.

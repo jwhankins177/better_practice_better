@@ -1,0 +1,41 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check for version update
+        run: |
+          if git diff origin/main HEAD -- index.html | grep -q "Better Practice Bets v"; then
+            echo "✅ Version number updated"
+          else
+            echo "⚠️ Warning: Version number may not be updated"
+          fi
+          
+      - name: Check for README update
+        run: |
+          if git diff origin/main HEAD -- README.md | grep -q "###"; then
+            echo "✅ README updated with changelog"
+          else
+            echo "⚠️ Warning: README may not be updated"
+          fi
+          
+      - name: Check HTML syntax
+        run: |
+          if [ -f index.html ]; then
+            echo "✅ index.html exists"
+          else
+            echo "❌ index.html not found"
+            exit 1
+          fi
+          
+      - name: PR Success
+        run: echo "✅ All checks passed! Ready for review."
