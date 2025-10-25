@@ -738,6 +738,12 @@
         // Initialize Firebase (only if config is properly set)
         let db = null;
         let deviceId = null;
+        let firebaseError = null;
+        
+        // Always generate or get device ID - needed even without cloud sync
+        deviceId = localStorage.getItem('deviceId') || 'device_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('deviceId', deviceId);
+        console.log('📱 Device ID:', deviceId);
         
         // Check if Firebase config is properly set (not placeholder values)
         const isFirebaseConfigured = firebaseConfig.apiKey && 
@@ -747,22 +753,24 @@
         
         if (isFirebaseConfigured) {
             try {
+                // Check if firebase SDK loaded
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase SDK not loaded - check if blocked by ad blocker');
+                }
+                
                 firebase.initializeApp(firebaseConfig);
                 db = firebase.firestore();
                 
-                // Generate or get device ID for syncing
-                deviceId = localStorage.getItem('deviceId') || 'device_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('deviceId', deviceId);
-                
                 console.log('🔥 Firebase initialized successfully!');
-                console.log('📱 Device ID:', deviceId);
+                console.log('☁️ Cloud sync enabled');
             } catch (error) {
                 console.error('Firebase initialization failed:', error);
+                firebaseError = error.message;
                 db = null;
-                deviceId = null;
             }
         } else {
             console.log('⚠️ Firebase not configured - using local storage only');
+            firebaseError = 'Firebase not configured';
         }
         
         // App State
@@ -1723,14 +1731,28 @@
                     statusEl.style.background = 'rgba(var(--color-success-rgb), 0.1)';
                     statusEl.style.color = 'var(--color-success)';
                 } else {
-                    statusEl.innerHTML = '📱 Using local storage only - data doesn\'t sync between devices';
-                    statusEl.style.background = 'var(--color-secondary)';
-                    statusEl.style.color = 'var(--color-text-secondary)';
+                    let message = '📱 Using local storage only - data doesn\'t sync between devices';
+                    if (firebaseError) {
+                        if (firebaseError.includes('blocked') || firebaseError.includes('not loaded')) {
+                            message += '<br><small>⚠️ Cloud sync unavailable: Firebase SDK blocked (check ad blocker or privacy settings)</small>';
+                        } else if (firebaseError.includes('not configured')) {
+                            message += '<br><small>ℹ️ Cloud sync not configured</small>';
+                        } else {
+                            message += '<br><small>⚠️ Cloud sync error: ' + firebaseError + '</small>';
+                        }
+                    }
+                    statusEl.innerHTML = message;
+                    statusEl.style.background = firebaseError && firebaseError.includes('blocked') ? 
+                        'rgba(var(--color-error-rgb), 0.1)' : 'var(--color-secondary)';
+                    statusEl.style.color = firebaseError && firebaseError.includes('blocked') ? 
+                        'var(--color-error)' : 'var(--color-text-secondary)';
                 }
             }
             
             if (deviceIdEl && deviceId) {
                 deviceIdEl.textContent = deviceId;
+            } else if (deviceIdEl) {
+                deviceIdEl.textContent = 'Not set';
             }
         }
         
