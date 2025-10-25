@@ -741,7 +741,7 @@
         let firebaseError = null;
         
         // Always generate or get device ID - needed even without cloud sync
-        deviceId = localStorage.getItem('deviceId') || 'device_' + Math.random().toString(36).substr(2, 9);
+        deviceId = localStorage.getItem('deviceId') || 'device_' + Math.random().toString(36).substring(2, 11);
         localStorage.setItem('deviceId', deviceId);
         console.log('📱 Device ID:', deviceId);
         
@@ -1732,8 +1732,10 @@
                     statusEl.style.color = 'var(--color-success)';
                 } else {
                     let message = '📱 Using local storage only - data doesn\'t sync between devices';
+                    const isBlocked = firebaseError && (firebaseError.includes('blocked') || firebaseError.includes('not loaded'));
+                    
                     if (firebaseError) {
-                        if (firebaseError.includes('blocked') || firebaseError.includes('not loaded')) {
+                        if (isBlocked) {
                             message += '<br><small>⚠️ Cloud sync unavailable: Firebase SDK blocked (check ad blocker or privacy settings)</small>';
                         } else if (firebaseError.includes('not configured')) {
                             message += '<br><small>ℹ️ Cloud sync not configured</small>';
@@ -1742,9 +1744,9 @@
                         }
                     }
                     statusEl.innerHTML = message;
-                    statusEl.style.background = firebaseError && firebaseError.includes('blocked') ? 
+                    statusEl.style.background = isBlocked ? 
                         'rgba(var(--color-error-rgb), 0.1)' : 'var(--color-secondary)';
-                    statusEl.style.color = firebaseError && firebaseError.includes('blocked') ? 
+                    statusEl.style.color = isBlocked ? 
                         'var(--color-error)' : 'var(--color-text-secondary)';
                 }
             }
