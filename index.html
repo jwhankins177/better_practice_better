@@ -1570,26 +1570,6 @@
         }
         
         // Replace alert with better confirmation
-        function confirmBet(bet) {
-            return new Promise((resolve) => {
-                const modal = document.createElement('div');
-                modal.innerHTML = `
-                    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-                        <div style="background: var(--color-surface); padding: var(--space-24); border-radius: var(--radius-lg); max-width: 400px;">
-                            <h3>Confirm Bet</h3>
-                            <p>${bet.team} ${formatOdds(bet.odds)}</p>
-                            <p>Stake: $${bet.stake}</p>
-                            <p>To Win: $${bet.potentialWin.toFixed(2)}</p>
-                            <div style="display: flex; gap: var(--space-12); margin-top: var(--space-16);">
-                                <button class="settle-btn win" onclick="this.closest('div').parentElement.remove(); resolve(true)">Confirm</button>
-                                <button class="settle-btn lose" onclick="this.closest('div').parentElement.remove(); resolve(false)">Cancel</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-            });
-        }
         
         // Place bet
         document.getElementById('place-bet-btn').addEventListener('click', () => {
@@ -1623,19 +1603,17 @@
                 gameTime: state.currentBet.time
             };
             
-            confirmBet(bet).then(confirmed => {
-                if (!confirmed) return;
-                
-                state.bankroll -= stake;
-                state.betHistory.unshift(bet);
-                
-                updateBankrollDisplay();
-                saveState();
-                
-                document.getElementById('bet-slip').classList.remove('active');
-                document.querySelectorAll('.odds-btn').forEach(b => b.classList.remove('selected'));
-                state.currentBet = null;
-            });
+            // Place bet immediately without confirmation
+            state.bankroll -= stake;
+            state.betHistory.unshift(bet);
+            
+            updateBankrollDisplay();
+            saveState();
+            renderBetHistory();
+            
+            document.getElementById('bet-slip').classList.remove('active');
+            document.querySelectorAll('.odds-btn').forEach(b => b.classList.remove('selected'));
+            state.currentBet = null;
         });
         
         // Update bankroll display
@@ -1858,11 +1836,28 @@
                             <div class="settle-buttons">
                                 <button class="settle-btn win" onclick="settleBet('${bet.id}', 'won')">Mark as Won</button>
                                 <button class="settle-btn lose" onclick="settleBet('${bet.id}', 'lost')">Mark as Lost</button>
+                                <button class="settle-btn" style="background: var(--color-error);" onclick="deleteBet('${bet.id}')">Delete Bet</button>
                             </div>
                         ` : ''}
                     </div>
                 `;
             }).join('');
+        }
+        
+        // Delete bet function
+        function deleteBet(betId) {
+            const bet = state.betHistory.find(b => b.id == betId);
+            if (!bet || bet.status !== 'pending') return;
+            
+            // Refund the stake to bankroll
+            state.bankroll += bet.stake;
+            
+            // Remove bet from history
+            state.betHistory = state.betHistory.filter(b => b.id != betId);
+            
+            updateBankrollDisplay();
+            renderBetHistory();
+            saveState();
         }
         
         // Settle bet function
@@ -1888,6 +1883,7 @@
         window.importData = importData;
         window.resetAllData = resetAllData;
         window.settleBet = settleBet;
+        window.deleteBet = deleteBet;
         
         // Refresh button
         document.getElementById('refresh-btn').addEventListener('click', fetchGames);
