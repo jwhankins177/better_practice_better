@@ -629,28 +629,45 @@
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
     <script>
-        // Firebase configuration (you'll need to set this up)
+        // Firebase configuration - REPLACE WITH YOUR CONFIG
         const firebaseConfig = {
-            // We'll add your Firebase config here after setup
-            apiKey: "",
-            authDomain: "",
-            projectId: "",
-            storageBucket: "",
-            messagingSenderId: "",
-            appId: ""
+            // Paste your Firebase config here after setup
+            apiKey: "REPLACE_WITH_YOUR_API_KEY",
+            authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
+            projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+            storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
+            messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+            appId: "REPLACE_WITH_YOUR_APP_ID"
         };
         
-        // Initialize Firebase (only if config is provided)
+        // Initialize Firebase (only if config is properly set)
         let db = null;
         let deviceId = null;
         
-        if (firebaseConfig.apiKey) {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            
-            // Generate or get device ID for syncing
-            deviceId = localStorage.getItem('deviceId') || 'device_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('deviceId', deviceId);
+        // Check if Firebase config is properly set (not placeholder values)
+        const isFirebaseConfigured = firebaseConfig.apiKey && 
+                                    !firebaseConfig.apiKey.includes('REPLACE_WITH') &&
+                                    firebaseConfig.projectId &&
+                                    !firebaseConfig.projectId.includes('REPLACE_WITH');
+        
+        if (isFirebaseConfigured) {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                
+                // Generate or get device ID for syncing
+                deviceId = localStorage.getItem('deviceId') || 'device_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('deviceId', deviceId);
+                
+                console.log('🔥 Firebase initialized successfully!');
+                console.log('📱 Device ID:', deviceId);
+            } catch (error) {
+                console.error('Firebase initialization failed:', error);
+                db = null;
+                deviceId = null;
+            }
+        } else {
+            console.log('⚠️ Firebase not configured - using local storage only');
         }
         
         // App State
