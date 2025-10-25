@@ -373,6 +373,29 @@
             font-weight: var(--font-weight-semibold);
         }
         
+        .quick-bet-btn {
+            padding: var(--space-8) var(--space-12);
+            background: var(--color-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            color: var(--color-text);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 60px;
+        }
+        
+        .quick-bet-btn:hover {
+            background: var(--color-secondary-hover);
+        }
+        
+        .quick-bet-btn:active {
+            background: var(--color-primary);
+            color: var(--color-btn-primary-text);
+        }
+        
         .potential-win {
             display: flex;
             justify-content: space-between;
@@ -641,6 +664,15 @@
         <div class="bet-details" id="bet-details"></div>
         <div class="stake-input-group">
             <label for="stake-input">Stake Amount</label>
+            <div style="display: flex; gap: var(--space-8); margin-bottom: var(--space-8); flex-wrap: wrap;">
+                <button class="quick-bet-btn" data-amount="25">$25</button>
+                <button class="quick-bet-btn" data-amount="50">$50</button>
+                <button class="quick-bet-btn" data-amount="100">$100</button>
+                <button class="quick-bet-btn" data-amount="250">$250</button>
+                <button class="quick-bet-btn" data-percent="1">1%</button>
+                <button class="quick-bet-btn" data-percent="2">2%</button>
+                <button class="quick-bet-btn" data-percent="5">5%</button>
+            </div>
             <input type="number" id="stake-input" class="stake-input" placeholder="100" min="1" step="1">
         </div>
         <div class="potential-win">
@@ -1239,6 +1271,23 @@
         
         // Update potential win
         document.getElementById('stake-input').addEventListener('input', updatePotentialWin);
+        
+        // Quick bet amount buttons
+        document.querySelectorAll('.quick-bet-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const stakeInput = document.getElementById('stake-input');
+                if (btn.dataset.amount) {
+                    // Fixed dollar amount
+                    stakeInput.value = btn.dataset.amount;
+                } else if (btn.dataset.percent) {
+                    // Percentage of bankroll
+                    const percent = parseFloat(btn.dataset.percent);
+                    const amount = Math.floor(state.bankroll * (percent / 100));
+                    stakeInput.value = amount;
+                }
+                updatePotentialWin();
+            });
+        });
         
         function updatePotentialWin() {
             try {
