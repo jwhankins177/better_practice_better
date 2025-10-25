@@ -280,6 +280,16 @@
             background: var(--color-secondary-hover);
         }
         
+        .odds-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--color-secondary);
+        }
+        
+        .odds-btn:disabled:hover {
+            background: var(--color-secondary);
+        }
+        
         .odds-btn.selected {
             background: var(--color-primary);
             color: var(--color-btn-primary-text);
@@ -1009,7 +1019,8 @@
                                         data-opponent="${game.home_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Moneyline"
-                                        data-selection="${game.away_team} ML">
+                                        data-selection="${game.away_team} ML"
+                                        ${awayOdds === 'N/A' ? 'disabled' : ''}>
                                     ${formatOdds(awayOdds)}
                                 </button>
                             </div>
@@ -1024,7 +1035,8 @@
                                         data-opponent="${game.away_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Moneyline"
-                                        data-selection="${game.home_team} ML">
+                                        data-selection="${game.home_team} ML"
+                                        ${homeOdds === 'N/A' ? 'disabled' : ''}>
                                     ${formatOdds(homeOdds)}
                                 </button>
                             </div>
@@ -1045,7 +1057,8 @@
                                         data-opponent="${game.home_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Point Spread"
-                                        data-selection="${game.away_team} ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point || 'N/A'}">
+                                        data-selection="${game.away_team} ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point || 'N/A'}"
+                                        ${!awaySpread?.price || awaySpread?.price === 'N/A' ? 'disabled' : ''}>
                                     ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point || 'N/A'} ${formatOdds(awaySpread?.price || 'N/A')}
                                 </button>
                             </div>
@@ -1060,7 +1073,8 @@
                                         data-opponent="${game.away_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Point Spread"
-                                        data-selection="${game.home_team} ${homeSpread?.point > 0 ? '+' : ''}${homeSpread?.point || 'N/A'}">
+                                        data-selection="${game.home_team} ${homeSpread?.point > 0 ? '+' : ''}${homeSpread?.point || 'N/A'}"
+                                        ${!homeSpread?.price || homeSpread?.price === 'N/A' ? 'disabled' : ''}>
                                     ${homeSpread?.point > 0 ? '+' : ''}${homeSpread?.point || 'N/A'} ${formatOdds(homeSpread?.price || 'N/A')}
                                 </button>
                             </div>
@@ -1081,7 +1095,8 @@
                                         data-opponent=""
                                         data-time="${game.commence_time}"
                                         data-bet-type="Total Points"
-                                        data-selection="Over ${overOutcome?.point || 'N/A'}">
+                                        data-selection="Over ${overOutcome?.point || 'N/A'}"
+                                        ${!overOutcome?.price || overOutcome?.price === 'N/A' ? 'disabled' : ''}>
                                     ${formatOdds(overOutcome?.price || 'N/A')}
                                 </button>
                             </div>
@@ -1096,7 +1111,8 @@
                                         data-opponent=""
                                         data-time="${game.commence_time}"
                                         data-bet-type="Total Points"
-                                        data-selection="Under ${underOutcome?.point || 'N/A'}">
+                                        data-selection="Under ${underOutcome?.point || 'N/A'}"
+                                        ${!underOutcome?.price || underOutcome?.price === 'N/A' ? 'disabled' : ''}>
                                     ${formatOdds(underOutcome?.price || 'N/A')}
                                 </button>
                             </div>
@@ -1125,51 +1141,94 @@
         
         // Select bet
         function selectBet(btn) {
-            const gameId = btn.dataset.gameId;
-            const team = btn.dataset.team;
-            const odds = parseFloat(btn.dataset.odds);
-            const opponent = btn.dataset.opponent;
-            const time = btn.dataset.time;
-            const betType = btn.dataset.betType;
-            const selection = btn.dataset.selection;
-            
-            state.currentBet = {
-                gameId,
-                team,
-                opponent,
-                odds,
-                time,
-                betType,
-                selection
-            };
-            
-            document.querySelectorAll('.odds-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            
-            showBetSlip();
+            try {
+                console.log('Selecting bet:', btn.dataset);
+                
+                const gameId = btn.dataset.gameId;
+                const team = btn.dataset.team;
+                const oddsValue = btn.dataset.odds;
+                const opponent = btn.dataset.opponent;
+                const time = btn.dataset.time;
+                const betType = btn.dataset.betType;
+                const selection = btn.dataset.selection;
+                
+                // Check for invalid odds
+                if (!oddsValue || oddsValue === 'N/A') {
+                    alert('Odds not available for this selection');
+                    return;
+                }
+                
+                const odds = parseFloat(oddsValue);
+                if (isNaN(odds)) {
+                    alert('Invalid odds value');
+                    return;
+                }
+                
+                state.currentBet = {
+                    gameId,
+                    team,
+                    opponent,
+                    odds,
+                    time,
+                    betType,
+                    selection
+                };
+                
+                console.log('Current bet set:', state.currentBet);
+                
+                document.querySelectorAll('.odds-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                
+                showBetSlip();
+            } catch (error) {
+                console.error('Error in selectBet:', error);
+                alert('Error selecting bet. Please try again.');
+            }
         }
         
         // Show bet slip
         function showBetSlip() {
-            const betSlip = document.getElementById('bet-slip');
-            const betDetails = document.getElementById('bet-details');
-            const stakeInput = document.getElementById('stake-input');
-            
-            const matchup = state.currentBet.opponent ? 
-                `${state.currentBet.team} vs ${state.currentBet.opponent}` : 
-                `${state.currentBet.team}`;
-            
-            betDetails.innerHTML = `
-                <div class="bet-info">${matchup}</div>
-                <div class="bet-info">${state.currentBet.betType}</div>
-                <div class="bet-selection">${state.currentBet.selection} ${formatOdds(state.currentBet.odds)}</div>
-            `;
-            
-            betSlip.classList.add('active');
-            stakeInput.value = '';
-            updatePotentialWin();
-            
-            stakeInput.focus();
+            try {
+                console.log('Showing bet slip for:', state.currentBet);
+                
+                const betSlip = document.getElementById('bet-slip');
+                const betDetails = document.getElementById('bet-details');
+                const stakeInput = document.getElementById('stake-input');
+                
+                if (!betSlip || !betDetails || !stakeInput) {
+                    console.error('Bet slip elements not found');
+                    return;
+                }
+                
+                if (!state.currentBet) {
+                    console.error('No current bet selected');
+                    return;
+                }
+                
+                const matchup = state.currentBet.opponent ? 
+                    `${state.currentBet.team} vs ${state.currentBet.opponent}` : 
+                    `${state.currentBet.team}`;
+                
+                betDetails.innerHTML = `
+                    <div class="bet-info">${matchup}</div>
+                    <div class="bet-info">${state.currentBet.betType || 'Moneyline'}</div>
+                    <div class="bet-selection">${state.currentBet.selection || state.currentBet.team} ${formatOdds(state.currentBet.odds)}</div>
+                `;
+                
+                betSlip.classList.add('active');
+                stakeInput.value = '';
+                updatePotentialWin();
+                
+                // Focus after a short delay to ensure the slip is visible
+                setTimeout(() => {
+                    stakeInput.focus();
+                }, 100);
+                
+                console.log('Bet slip shown successfully');
+            } catch (error) {
+                console.error('Error in showBetSlip:', error);
+                alert('Error showing bet slip. Please try again.');
+            }
         }
         
         // Close bet slip
@@ -1183,20 +1242,38 @@
         document.getElementById('stake-input').addEventListener('input', updatePotentialWin);
         
         function updatePotentialWin() {
-            const stake = parseFloat(document.getElementById('stake-input').value) || 0;
-            const odds = state.currentBet?.odds || 0;
-            
-            let potentialWin = 0;
-            if (odds > 0) {
-                potentialWin = stake * (odds / 100);
-            } else {
-                potentialWin = stake * (100 / Math.abs(odds));
+            try {
+                const stakeInput = document.getElementById('stake-input');
+                const potentialWinEl = document.getElementById('potential-win');
+                const placeBtnEl = document.getElementById('place-bet-btn');
+                
+                if (!stakeInput || !potentialWinEl || !placeBtnEl) {
+                    console.error('Potential win elements not found');
+                    return;
+                }
+                
+                const stake = parseFloat(stakeInput.value) || 0;
+                const odds = state.currentBet?.odds || 0;
+                
+                if (isNaN(odds) || odds === 0) {
+                    potentialWinEl.textContent = '$0.00';
+                    placeBtnEl.disabled = true;
+                    return;
+                }
+                
+                let potentialWin = 0;
+                if (odds > 0) {
+                    potentialWin = stake * (odds / 100);
+                } else {
+                    potentialWin = stake * (100 / Math.abs(odds));
+                }
+                
+                potentialWinEl.textContent = `$${potentialWin.toFixed(2)}`;
+                
+                placeBtnEl.disabled = stake <= 0 || stake > state.bankroll || isNaN(stake);
+            } catch (error) {
+                console.error('Error in updatePotentialWin:', error);
             }
-            
-            document.getElementById('potential-win').textContent = `$${potentialWin.toFixed(2)}`;
-            
-            const placeBtn = document.getElementById('place-bet-btn');
-            placeBtn.disabled = stake <= 0 || stake > state.bankroll;
         }
         
         // Add better stake validation
