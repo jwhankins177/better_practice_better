@@ -21,7 +21,7 @@ A practice betting application with live sports odds, cloud synchronization, and
 
 ## How It Works
 - **Practice Mode:** No real money involved - perfect for testing strategies
-- **Cloud Sync:** Your bankroll and bet history sync across all your devices
+- **Cloud Sync:** Your bankroll and bet history sync across all your devices (requires Firebase; may be blocked by ad blockers - check Settings tab for status)
 - **Live Odds:** Real-time odds from professional sportsbooks
 - **Analytics:** Track your performance with detailed charts and statistics
 
@@ -110,6 +110,17 @@ Active development happens on feature branches that are merged into `main` via p
 ### Branch Structure
 - `main` - Production releases (stable, always deployable)
 - `feature/*` - Feature branches (created as needed, deleted after merge)
+
+## Troubleshooting
+
+### Cloud Sync Not Working
+If you see "Cloud sync unavailable: Firebase SDK blocked" in the Settings tab:
+1. **Check your ad blocker** - Temporarily disable ad blockers (uBlock Origin, AdBlock Plus, etc.)
+2. **Check privacy extensions** - Some privacy tools block Firebase/Google services
+3. **Try a different browser** - Test in a browser without extensions
+4. **Use Export/Import** - Manually transfer data between devices using the Export/Import buttons in Settings
+
+Note: The app will always work with local storage even if cloud sync fails. Your data is saved locally and won't be lost.
 
 ## Support
 For issues or feature requests, please create an issue on GitHub.
