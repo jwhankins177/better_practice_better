@@ -469,6 +469,11 @@
             color: var(--color-error);
         }
         
+        .bet-status.push {
+            background: rgba(var(--color-slate-500-rgb), 0.15);
+            color: var(--color-text);
+        }
+        
         .settle-buttons {
             display: flex;
             gap: var(--space-8);
@@ -618,6 +623,7 @@
         </div>
         
         <div id="history-tab" class="tab-content">
+            <button class="refresh-btn" id="check-results-btn" style="width: 100%; margin-bottom: var(--space-16);">🎯 Check Results & Settle Bets</button>
             <div id="history-container"></div>
         </div>
         
@@ -1273,6 +1279,8 @@
                                         data-team="${game.away_team}"
                                         data-odds="${awayOdds}"
                                         data-opponent="${game.home_team}"
+                                        data-away-team="${game.away_team}"
+                                        data-home-team="${game.home_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Moneyline"
                                         data-selection="${game.away_team} ML"
@@ -1289,6 +1297,8 @@
                                         data-team="${game.home_team}"
                                         data-odds="${homeOdds}"
                                         data-opponent="${game.away_team}"
+                                        data-away-team="${game.away_team}"
+                                        data-home-team="${game.home_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Moneyline"
                                         data-selection="${game.home_team} ML"
@@ -1311,9 +1321,12 @@
                                         data-team="${game.away_team}"
                                         data-odds="${awaySpread?.price || 'N/A'}"
                                         data-opponent="${game.home_team}"
+                                        data-away-team="${game.away_team}"
+                                        data-home-team="${game.home_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Point Spread"
                                         data-selection="${game.away_team} ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point || 'N/A'}"
+                                        data-point="${awaySpread?.point || ''}"
                                         ${!awaySpread?.price || awaySpread?.price === 'N/A' ? 'disabled' : ''}>
                                     ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point || 'N/A'} ${formatOdds(awaySpread?.price || 'N/A')}
                                 </button>
@@ -1327,9 +1340,12 @@
                                         data-team="${game.home_team}"
                                         data-odds="${homeSpread?.price || 'N/A'}"
                                         data-opponent="${game.away_team}"
+                                        data-away-team="${game.away_team}"
+                                        data-home-team="${game.home_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Point Spread"
                                         data-selection="${game.home_team} ${homeSpread?.point > 0 ? '+' : ''}${homeSpread?.point || 'N/A'}"
+                                        data-point="${homeSpread?.point || ''}"
                                         ${!homeSpread?.price || homeSpread?.price === 'N/A' ? 'disabled' : ''}>
                                     ${homeSpread?.point > 0 ? '+' : ''}${homeSpread?.point || 'N/A'} ${formatOdds(homeSpread?.price || 'N/A')}
                                 </button>
@@ -1349,9 +1365,12 @@
                                         data-team="Over"
                                         data-odds="${overOutcome?.price || 'N/A'}"
                                         data-opponent=""
+                                        data-away-team="${game.away_team}"
+                                        data-home-team="${game.home_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Total Points"
                                         data-selection="Over ${overOutcome?.point || 'N/A'}"
+                                        data-point="${overOutcome?.point || ''}"
                                         ${!overOutcome?.price || overOutcome?.price === 'N/A' ? 'disabled' : ''}>
                                     ${formatOdds(overOutcome?.price || 'N/A')}
                                 </button>
@@ -1365,9 +1384,12 @@
                                         data-team="Under"
                                         data-odds="${underOutcome?.price || 'N/A'}"
                                         data-opponent=""
+                                        data-away-team="${game.away_team}"
+                                        data-home-team="${game.home_team}"
                                         data-time="${game.commence_time}"
                                         data-bet-type="Total Points"
                                         data-selection="Under ${underOutcome?.point || 'N/A'}"
+                                        data-point="${underOutcome?.point || ''}"
                                         ${!underOutcome?.price || underOutcome?.price === 'N/A' ? 'disabled' : ''}>
                                     ${formatOdds(underOutcome?.price || 'N/A')}
                                 </button>
@@ -1407,6 +1429,9 @@
                 const time = btn.dataset.time;
                 const betType = btn.dataset.betType;
                 const selection = btn.dataset.selection;
+                const point = btn.dataset.point;
+                const awayTeam = btn.dataset.awayTeam;
+                const homeTeam = btn.dataset.homeTeam;
                 
                 // Check for invalid odds
                 if (!oddsValue || oddsValue === 'N/A') {
@@ -1427,7 +1452,10 @@
                     odds,
                     time,
                     betType,
-                    selection
+                    selection,
+                    point: point ? parseFloat(point) : null,
+                    awayTeam,
+                    homeTeam
                 };
                 
                 console.log('Current bet set:', state.currentBet);
@@ -1591,11 +1619,15 @@
             const bet = {
                 id: Date.now(),
                 gameId: state.currentBet.gameId,
+                sport: state.currentSport, // Store the sport for auto-settlement
                 team: state.currentBet.team,
                 opponent: state.currentBet.opponent,
                 odds: state.currentBet.odds,
                 betType: state.currentBet.betType,
                 selection: state.currentBet.selection,
+                point: state.currentBet.point,
+                awayTeam: state.currentBet.awayTeam,
+                homeTeam: state.currentBet.homeTeam,
                 stake,
                 potentialWin,
                 status: 'pending',
@@ -1868,7 +1900,8 @@
             bet.status = result;
             
             if (result === 'won') {
-                // Add winnings to bankroll (stake + potential win)
+                // Add winnings to bankroll (stake + potentialWin)
+                // Stake was deducted when bet was placed, so we return it plus winnings
                 state.bankroll += bet.stake + bet.potentialWin;
             }
             // If lost, stake was already deducted when bet was placed
@@ -1915,6 +1948,256 @@
             }
             
             alert('Debug info logged to console. Check browser developer tools.');
+        });
+        
+        // ============================================
+        // AUTOMATIC BET SETTLEMENT FUNCTIONS
+        // ============================================
+        
+        // Fetch game scores from The Odds API
+        async function fetchGameScores(sport) {
+            if (!state.apiKey) {
+                throw new Error('API key not configured');
+            }
+            
+            console.log('Fetching scores for sport:', sport);
+            
+            const apiUrl = `https://api.the-odds-api.com/v4/sports/${sport}/scores/?apiKey=${state.apiKey}&daysFrom=3`;
+            const corsProxy = 'https://api.allorigins.win/get?url=';
+            const url = corsProxy + encodeURIComponent(apiUrl);
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+            
+            const proxyData = await response.json();
+            const data = JSON.parse(proxyData.contents);
+            
+            console.log('Fetched scores:', data);
+            return data;
+        }
+        
+        // Determine if a bet won based on game result
+        function determineBetResult(bet, gameScore) {
+            if (!gameScore.completed) {
+                return null; // Game not completed yet
+            }
+            
+            const awayScore = gameScore.scores?.find(s => s.name === bet.awayTeam)?.score;
+            const homeScore = gameScore.scores?.find(s => s.name === bet.homeTeam)?.score;
+            
+            if (awayScore === undefined || homeScore === undefined) {
+                console.warn('Score data not available for game:', gameScore.id);
+                return null;
+            }
+            
+            console.log(`Game ${bet.awayTeam} vs ${bet.homeTeam}: ${awayScore} - ${homeScore}`);
+            
+            // Handle different bet types
+            if (bet.betType === 'Moneyline') {
+                // Check if selected team won
+                const awayWon = awayScore > homeScore;
+                const homeWon = homeScore > awayScore;
+                
+                if (bet.team === bet.awayTeam) {
+                    return awayWon ? 'won' : 'lost';
+                } else if (bet.team === bet.homeTeam) {
+                    return homeWon ? 'won' : 'lost';
+                }
+            } else if (bet.betType === 'Point Spread') {
+                // Check if team covered the spread
+                const margin = bet.team === bet.awayTeam ? 
+                    (awayScore - homeScore) : 
+                    (homeScore - awayScore);
+                
+                // Handle push (exactly hit the spread)
+                if (margin + bet.point === 0) {
+                    return 'push'; // Tie - refund stake
+                }
+                
+                // Bet wins if team's score + spread > opponent's score
+                const covered = margin + bet.point > 0;
+                return covered ? 'won' : 'lost';
+            } else if (bet.betType === 'Total Points') {
+                // Check if total was over/under
+                const totalScore = awayScore + homeScore;
+                
+                // Handle push (exactly hit the total)
+                if (totalScore === bet.point) {
+                    return 'push'; // Tie - refund stake
+                }
+                
+                if (bet.team === 'Over') {
+                    return totalScore > bet.point ? 'won' : 'lost';
+                } else if (bet.team === 'Under') {
+                    return totalScore < bet.point ? 'won' : 'lost';
+                }
+            }
+            
+            return null;
+        }
+        
+        // Check results and settle pending bets
+        async function checkResultsAndSettle() {
+            const checkBtn = document.getElementById('check-results-btn');
+            if (checkBtn) {
+                checkBtn.textContent = '⏳ Checking results...';
+                checkBtn.disabled = true;
+            }
+            
+            try {
+                const pendingBets = state.betHistory.filter(b => b.status === 'pending');
+                
+                if (pendingBets.length === 0) {
+                    alert('No pending bets to settle');
+                    return;
+                }
+                
+                // Group bets by sport to minimize API calls
+                const betsBySport = {};
+                pendingBets.forEach(bet => {
+                    const sport = bet.sport || state.currentSport; // Use bet's sport or fallback to current
+                    if (!betsBySport[sport]) {
+                        betsBySport[sport] = [];
+                    }
+                    betsBySport[sport].push(bet);
+                });
+                
+                let settledCount = 0;
+                const results = [];
+                
+                // Fetch scores for each sport
+                for (const sport in betsBySport) {
+                    try {
+                        const scores = await fetchGameScores(sport);
+                        const betsForSport = betsBySport[sport];
+                        
+                        // Match bets to games and settle
+                        for (const bet of betsForSport) {
+                            const gameScore = scores.find(g => g.id === bet.gameId);
+                            
+                            if (gameScore && gameScore.completed) {
+                                const result = determineBetResult(bet, gameScore);
+                                
+                                if (result) {
+                                    bet.status = result;
+                                    
+                                    if (result === 'won') {
+                                        // Add winnings to bankroll (stake + potentialWin)
+                                        // Stake was deducted when bet was placed, so we return it plus winnings
+                                        state.bankroll += bet.stake + bet.potentialWin;
+                                    } else if (result === 'push') {
+                                        // Return stake on push
+                                        state.bankroll += bet.stake;
+                                    }
+                                    // If lost, stake was already deducted when bet was placed
+                                    
+                                    settledCount++;
+                                    results.push({
+                                        bet: bet,
+                                        result: result
+                                    });
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching scores for ${sport}:`, error);
+                    }
+                }
+                
+                if (settledCount > 0) {
+                    updateBankrollDisplay();
+                    renderBetHistory();
+                    saveState();
+                    
+                    // Show notification
+                    const wonCount = results.filter(r => r.result === 'won').length;
+                    const lostCount = results.filter(r => r.result === 'lost').length;
+                    const pushCount = results.filter(r => r.result === 'push').length;
+                    
+                    let message = `Settled ${settledCount} bet(s): ${wonCount} won, ${lostCount} lost`;
+                    if (pushCount > 0) {
+                        message += `, ${pushCount} push`;
+                    }
+                    
+                    showNotification(
+                        message,
+                        wonCount > lostCount ? 'success' : 'info'
+                    );
+                } else {
+                    alert('No completed games found for pending bets. Bets may still be in progress.');
+                }
+            } catch (error) {
+                console.error('Error checking results:', error);
+                alert(`Error checking results: ${error.message}`);
+            } finally {
+                if (checkBtn) {
+                    checkBtn.textContent = '🎯 Check Results & Settle Bets';
+                    checkBtn.disabled = false;
+                }
+            }
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: var(--space-16);
+                background: ${type === 'success' ? 'var(--color-success)' : 'var(--color-primary)'};
+                color: var(--color-btn-primary-text);
+                border-radius: var(--radius-base);
+                box-shadow: var(--shadow-md);
+                z-index: 1000;
+                max-width: 300px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s';
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        }
+        
+        // Add CSS for notification animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Check Results button handler
+        document.getElementById('check-results-btn').addEventListener('click', checkResultsAndSettle);
+        
+        // Auto-check on page load (only if there are pending bets)
+        window.addEventListener('load', () => {
+            const pendingBets = state.betHistory.filter(b => b.status === 'pending');
+            if (pendingBets.length > 0 && state.apiKey) {
+                console.log('Auto-checking results on page load...');
+                // Wait a bit for the page to fully load
+                setTimeout(() => {
+                    checkResultsAndSettle().catch(err => {
+                        console.warn('Auto-check failed:', err);
+                    });
+                }, 2000);
+            }
         });
     </script>
 </body>
