@@ -589,6 +589,7 @@
         <div class="tabs">
             <button class="tab active" data-tab="games">Games</button>
             <button class="tab" data-tab="history">Bet History</button>
+            <button class="tab" data-tab="analytics">Analytics</button>
             <button class="tab" data-tab="settings">Settings</button>
         </div>
         
@@ -619,6 +620,23 @@
         
         <div id="history-tab" class="tab-content">
             <div id="history-container"></div>
+        </div>
+        
+        <div id="analytics-tab" class="tab-content">
+            <div style="background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--radius-lg); padding: var(--space-16); margin-bottom: var(--space-16);">
+                <h3 style="margin-bottom: var(--space-16); color: var(--color-text);">Bankroll Over Time</h3>
+                <canvas id="bankroll-chart" style="max-height: 300px;"></canvas>
+            </div>
+            
+            <div style="background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--radius-lg); padding: var(--space-16); margin-bottom: var(--space-16);">
+                <h3 style="margin-bottom: var(--space-16); color: var(--color-text);">Win Rate by Sport</h3>
+                <canvas id="sport-chart" style="max-height: 300px;"></canvas>
+            </div>
+            
+            <div style="background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--radius-lg); padding: var(--space-16);">
+                <h3 style="margin-bottom: var(--space-12); color: var(--color-text);">Performance Breakdown</h3>
+                <div id="performance-stats" style="font-size: var(--font-size-sm);"></div>
+            </div>
         </div>
         
         <div id="settings-tab" class="tab-content">
@@ -700,6 +718,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         // Firebase configuration - YOUR ACTUAL CONFIG
         const firebaseConfig = {
@@ -866,6 +885,191 @@
             }
         }
         
+        // Analytics rendering
+        let bankrollChart = null;
+        let sportChart = null;
+        
+        function renderAnalytics() {
+            renderBankrollChart();
+            renderSportChart();
+            renderPerformanceStats();
+        }
+        
+        function renderBankrollChart() {
+            const ctx = document.getElementById('bankroll-chart');
+            if (!ctx) return;
+            
+            // Calculate bankroll history from bet history
+            const sortedBets = [...state.betHistory]
+                .filter(b => b.status !== 'pending')
+                .sort((a, b) => new Date(a.placedAt) - new Date(b.placedAt));
+            
+            let currentBankroll = 1000; // Starting bankroll
+            const data = [{ x: 'Start', y: currentBankroll }];
+            
+            sortedBets.forEach((bet, index) => {
+                if (bet.status === 'won') {
+                    currentBankroll += bet.potentialWin;
+                } else if (bet.status === 'lost') {
+                    // Stake was already deducted when bet was placed
+                }
+                data.push({
+                    x: index + 1,
+                    y: currentBankroll
+                });
+            });
+            
+            if (bankrollChart) {
+                bankrollChart.destroy();
+            }
+            
+            bankrollChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.x),
+                    datasets: [{
+                        label: 'Bankroll',
+                        data: data.map(d => d.y),
+                        borderColor: 'rgb(33, 128, 141)',
+                        backgroundColor: 'rgba(33, 128, 141, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderSportChart() {
+            const ctx = document.getElementById('sport-chart');
+            if (!ctx) return;
+            
+            // Calculate win rate by sport - simplified version
+            const sportStats = { 'All Sports': { wins: 0, losses: 0 } };
+            state.betHistory
+                .filter(b => b.status !== 'pending')
+                .forEach(bet => {
+                    if (bet.status === 'won') {
+                        sportStats['All Sports'].wins++;
+                    } else {
+                        sportStats['All Sports'].losses++;
+                    }
+                });
+            
+            const labels = Object.keys(sportStats);
+            const winRates = labels.map(sport => {
+                const total = sportStats[sport].wins + sportStats[sport].losses;
+                return total > 0 ? ((sportStats[sport].wins / total) * 100).toFixed(1) : 0;
+            });
+            
+            if (sportChart) {
+                sportChart.destroy();
+            }
+            
+            sportChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Win Rate %',
+                        data: winRates,
+                        backgroundColor: 'rgba(33, 128, 141, 0.8)',
+                        borderColor: 'rgb(33, 128, 141)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderPerformanceStats() {
+            const container = document.getElementById('performance-stats');
+            if (!container) return;
+            
+            const settledBets = state.betHistory.filter(b => b.status !== 'pending');
+            const wins = settledBets.filter(b => b.status === 'won');
+            const losses = settledBets.filter(b => b.status === 'lost');
+            
+            const avgWinAmount = wins.length > 0 ? 
+                wins.reduce((sum, bet) => sum + bet.potentialWin, 0) / wins.length : 0;
+            const avgLossAmount = losses.length > 0 ?
+                losses.reduce((sum, bet) => sum + bet.stake, 0) / losses.length : 0;
+            
+            const avgStake = settledBets.length > 0 ?
+                settledBets.reduce((sum, bet) => sum + bet.stake, 0) / settledBets.length : 0;
+            
+            const biggestWin = wins.length > 0 ?
+                Math.max(...wins.map(b => b.potentialWin)) : 0;
+            const biggestLoss = losses.length > 0 ?
+                Math.max(...losses.map(b => b.stake)) : 0;
+            
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12);">
+                    <div>
+                        <div style="color: var(--color-text-secondary); margin-bottom: 4px;">Avg Win</div>
+                        <div style="color: var(--color-success); font-weight: var(--font-weight-bold);">$${avgWinAmount.toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--color-text-secondary); margin-bottom: 4px;">Avg Loss</div>
+                        <div style="color: var(--color-error); font-weight: var(--font-weight-bold);">$${avgLossAmount.toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--color-text-secondary); margin-bottom: 4px;">Avg Stake</div>
+                        <div style="color: var(--color-text); font-weight: var(--font-weight-bold);">$${avgStake.toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--color-text-secondary); margin-bottom: 4px;">Total Bets</div>
+                        <div style="color: var(--color-text); font-weight: var(--font-weight-bold);">${settledBets.length}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--color-text-secondary); margin-bottom: 4px;">Biggest Win</div>
+                        <div style="color: var(--color-success); font-weight: var(--font-weight-bold);">$${biggestWin.toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--color-text-secondary); margin-bottom: 4px;">Biggest Loss</div>
+                        <div style="color: var(--color-error); font-weight: var(--font-weight-bold);">$${biggestLoss.toFixed(2)}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
         // Initialize
         loadState();
         renderSportSelector();
@@ -899,6 +1103,11 @@
                 // Update storage status when settings tab is opened
                 if (tabName === 'settings') {
                     updateStorageStatus();
+                }
+                
+                // Render analytics when tab is opened
+                if (tabName === 'analytics') {
+                    renderAnalytics();
                 }
             });
         });
